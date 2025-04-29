@@ -61,7 +61,7 @@ server.on('listening', () => {
 	);
 
 	console.log(
-		`  ${chalk.bold(host('Local System:'))}            http://localhost${address.port === 8080 ? '' : ':' + chalk.bold(address.port)}`
+		`  ${chalk.bold(host('Local System:'))}            http://localhost${address.port === 9016 ? '' : ':' + chalk.bold(address.port)}`
 	);
 
 	try {
