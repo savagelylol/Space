@@ -66,7 +66,7 @@ server.on('listening', () => {
 
 	try {
 		console.log(
-			`  ${chalk.bold(host('On Your Network:'))}  http://${hostname()}${address.port === 8080 ? '' : ':' + chalk.bold(address.port)}`
+			`  ${chalk.bold(host('On Your Network:'))}  http://${hostname()}${address.port === 9016 ? '' : ':' + chalk.bold(address.port)}`
 		);
 	} catch (err) {
 		// can't find LAN interface
