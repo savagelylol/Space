@@ -1,4 +1,6 @@
 import express from 'express';
+const express = require('express');
+
 import cors from 'cors';
 import http from 'node:http';
 import path from 'node:path';
@@ -15,6 +17,11 @@ const server = http.createServer();
 const app = express();
 const __dirname = process.cwd();
 const PORT = process.env.PORT || 6060;
+
+app.set('trust proxy', 1);
+app.get('/ip', (req, res) => res.send(req.ip));
+app.get('/ip', (req, res) => res.send(req.ip));
+app.get('/x-forwarded-for', (req, res) => res.send(req.headers['x-forwarded-for']));
 
 app.use(cors());
 app.use(express.urlencoded({ extended: true }));
@@ -93,5 +100,5 @@ server.on('listening', () => {
 		);
 	}
 });
-
+const app = express();
 server.listen(PORT);
