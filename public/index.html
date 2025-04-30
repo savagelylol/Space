@@ -11,6 +11,14 @@
 			href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined"
 		/>
 		<script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+
+		<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js', { scope: '/' })
+      .then(() => console.log('Service Worker registered'))
+      .catch(err => console.error('Registration failed:', err));
+  }
+</script>
 		<title>Space</title>
 		<link rel="icon" type="icon/x-icon" href="/assets/favicon.ico" />
 		<meta
