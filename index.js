@@ -13,15 +13,10 @@ import { baremuxPath } from '@mercuryworkshop/bare-mux/node';
 import { server as wisp } from '@mercuryworkshop/wisp-js/server';
 import routes from './src/routes.js';
 
-const server = http.createServer();
-const app = express();
+
 const __dirname = process.cwd();
 const PORT = process.env.PORT || 6060;
 
-app.set('trust proxy', 1);
-app.get('/ip', (req, res) => res.send(req.ip));
-app.get('/ip', (req, res) => res.send(req.ip));
-app.get('/x-forwarded-for', (req, res) => res.send(req.headers['x-forwarded-for']));
 
 app.use(cors());
 app.use(express.urlencoded({ extended: true }));
