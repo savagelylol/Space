@@ -6,13 +6,6 @@ const router = express.Router();
 let __dirname = process.cwd();
 
 
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 150000, 
-});
-
-router.use(limiter);
-
 router.get('/', (req, res) => {
 	res.sendFile(path.join(__dirname, 'public/index.html'));
 });
