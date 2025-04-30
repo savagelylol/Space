@@ -1,11 +1,16 @@
 {
+  "version": 2,
   "builds": [
     {
-      "src": "index.js",
+      "src": "./index.js",
       "use": "@vercel/node"
     }
   ],
-  "installCommand": "echo $(node -v) && pnpm install",
-  "buildCommand": "pnpm build",
-  "outputDirectory": "dist"
+  "routes": [
+    
+    {
+      "src": "/(.*)",
+      "dest": "/"
+    }
+  ]
 }
