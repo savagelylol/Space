@@ -1,5 +1,4 @@
 import express from 'express';
-
 import cors from 'cors';
 import http from 'node:http';
 import path from 'node:path';
@@ -12,10 +11,10 @@ import { baremuxPath } from '@mercuryworkshop/bare-mux/node';
 import { server as wisp } from '@mercuryworkshop/wisp-js/server';
 import routes from './src/routes.js';
 
-
+const server = http.createServer();
+const app = express();
 const __dirname = process.cwd();
 const PORT = process.env.PORT || 6060;
-
 
 app.use(cors());
 app.use(express.urlencoded({ extended: true }));
@@ -62,12 +61,12 @@ server.on('listening', () => {
 	);
 
 	console.log(
-		`  ${chalk.bold(host('Local System:'))}            http://localhost${address.port === 9016 ? '' : ':' + chalk.bold(address.port)}`
+		`  ${chalk.bold(host('Local System:'))}            http://localhost${address.port === 8080 ? '' : ':' + chalk.bold(address.port)}`
 	);
 
 	try {
 		console.log(
-			`  ${chalk.bold(host('On Your Network:'))}  http://${hostname()}${address.port === 9016 ? '' : ':' + chalk.bold(address.port)}`
+			`  ${chalk.bold(host('On Your Network:'))}  http://${hostname()}${address.port === 8080 ? '' : ':' + chalk.bold(address.port)}`
 		);
 	} catch (err) {
 		// can't find LAN interface
@@ -94,5 +93,5 @@ server.on('listening', () => {
 		);
 	}
 });
-const app = express();
+
 server.listen(PORT);
