@@ -8,7 +8,7 @@ let __dirname = process.cwd();
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 25000, 
+  max: 150000, 
 });
 
 router.use(limiter);
