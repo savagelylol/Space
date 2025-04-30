@@ -21,7 +21,7 @@
     "description": "",
     "engines": {
         "node": ">=20.0.0 <22.0.0",
-        "pnpm": ">=9.0.0"
+        "pnpm": ">=18.1.0"
     },
     "packageManager": "pnpm@9.0.0",
     "dependencies": {
