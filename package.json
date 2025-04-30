@@ -5,6 +5,7 @@
     "main": "index.js",
     "scripts": {
         "start": "node index.js",
+        "build": "sass src/styles.scss public/styles.css && terser src/script.js -o public/script.min.js",
         "format": "prettier --write ."
     },
     "keywords": [
