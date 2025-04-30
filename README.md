@@ -55,13 +55,3 @@ git pull --force --allow-unrelated-histories
 To contribute to Space, clone the repo locally and submit your code in a pull
 request. If you are making large changes, please make sure you test your code
 before submitting a pull request. Please check [contributing.md](https://github.com/NightProxy/Space/blob/main/contributing.md) for a more in-depth explanation.
-
-## Contributors
-
-Thank you to the following people for contributing to Space.
-
-[![Contributors](https://contrib.rocks/image?repo=nightproxy/space)](https://github.com/NightProxy/Space/graphs/contributors)
-
-## Discord
-
-[![Discord](https://invidget.switchblade.xyz/QmWUfvm4bn?theme=dark)](https://discord.gointospace.app)
