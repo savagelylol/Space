@@ -39,6 +39,12 @@ server.on('upgrade', (req, socket, head) => {
 	}
 });
 
+
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).send('Something broke!');
+});
+
 server.on('listening', () => {
 	const address = server.address();
 	const theme = chalk.hex('#8F00FF');
