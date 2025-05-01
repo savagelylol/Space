@@ -34,13 +34,6 @@ app.get('/@/space/*', (req, res) => {
 
 
 
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/uv/sw.js');
-}
-
-
-
-
 server.on('request', (req, res) => {
 	app(req, res);
 });
