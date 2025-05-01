@@ -24,8 +24,14 @@ app.use('/epoxy/', express.static(epoxyPath));
 app.use('/@/', express.static(uvPath));
 app.use('/libcurl/', express.static(libcurlPath));
 app.use('/baremux/', express.static(baremuxPath));
-
 app.use('/', routes);
+
+
+app.get('/@/space/*', (req, res) => {
+  console.log('Proxy request:', req.path);
+  res.send('Proxy path hit');
+});
+
 
 server.on('request', (req, res) => {
 	app(req, res);
