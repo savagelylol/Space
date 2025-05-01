@@ -34,6 +34,15 @@ app.get('/@/space/*', (req, res) => {
 
 
 
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/uv/sw.js').then(() => {
+    console.log('Service Worker registered');
+  }).catch(error => {
+    console.log('Service Worker registration failed:', error);
+  });
+}
+
+
 server.on('request', (req, res) => {
 	app(req, res);
 });
