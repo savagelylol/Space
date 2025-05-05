@@ -27,20 +27,47 @@ app.use('/baremux/', express.static(baremuxPath));
 app.use('/', routes);
 
 
-app.get('/@/space/*', (req, res) => {
-  console.log('Proxy request:', req.path);
-  res.send('Proxy path hit');
+
+
+
+
+
+const express = require('express');
+const { createProxyMiddleware } = require('http-proxy-middleware');
+const app = express();
+
+// Your existing middleware and routes (if any)...
+
+// Proxy setup for /a route
+app.use('/a', (req, res, next) => {
+  const targetUrl = req.query.url;
+  if (!targetUrl) {
+    return res.status(400).send('Missing url parameter');
+  }
+  const proxy = createProxyMiddleware({
+    target: targetUrl,
+    changeOrigin: true,
+    pathRewrite: { '^/a': '' },
+    onError: (err, req, res) => {
+      res.status(500).send('Proxy error occurred');
+    }
+  });
+  proxy(req, res, next);
 });
 
 
 
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/uv/sw.js').then(() => {
-    console.log('Service Worker registered');
-  }).catch(error => {
-    console.log('Service Worker registration failed:', error);
-  });
-}
+
+
+
+
+
+
+
+
+
+
+
 
 
 server.on('request', (req, res) => {
