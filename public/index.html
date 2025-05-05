@@ -13,15 +13,19 @@
 		<script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
 
 		<script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js', { scope: '/' })
-      .then(() => console.log('Service Worker registered'))
-      .catch(err => console.error('Registration failed:', err));
-  }
+
+<script src="https://unpkg.com/wombat@latest/dist/wombat.js"></script>
+
+<script>
+  window.wombatInit = function() {
+    window.wombat = new Wombat({ prefix: '/proxy/' });
+    wombat.rewrite();
+  };
+</script>
+
+		
 
 
-<script src="/uv/uv.bundle.js"></script>
-<script src="/uv/uv.config.js"></script>
 <script src="/baremux/index.js"></script>
 
 
