@@ -2,18 +2,22 @@
   "version": 2,
   "builds": [
     {
-      "src": "index.js",
-      "use": "@vercel/node"
-    },
-    {
       "src": "public/**/*",
       "use": "@vercel/static"
+    },
+    {
+      "src": "api/proxy.js",
+      "use": "@vercel/node"
     }
   ],
   "routes": [
     {
+      "src": "/api/proxy",
+      "dest": "api/proxy.js"
+    },
+    {
       "src": "/(.*)",
-      "dest": "index.js"
+      "dest": "/public/index.html"
     }
   ]
 }
