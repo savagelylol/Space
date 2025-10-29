@@ -1,0 +1,9 @@
+{
+  "name": "Stellar Theme",
+  "slug": "stellar-theme",
+  "version": "0.1.0",
+  "entry": "/plugins/sample-theme/plugin.js",
+  "description": "A blue/black space theme for Space",
+  "author": "community",
+  "approved": true
+}
