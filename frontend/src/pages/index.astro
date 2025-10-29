@@ -1,0 +1,28 @@
+---
+import ChatWidget from '../components/ChatWidget.jsx';
+import ProxyForm from '../components/ProxyForm.jsx';
+---
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Space — browse safely</title>
+  </head>
+  <body class="bg-black text-sky-200 min-h-screen">
+    <div class="max-w-5xl mx-auto p-8">
+      <h1 class="text-5xl font-bold text-sky-100">Space</h1>
+      <p class="mt-4 text-sky-300">Space is a space-themed proxy + AI assistant. Try the proxy below or chat with Astro.</p>
+
+      <section class="mt-8">
+        <ProxyForm />
+      </section>
+
+      <section class="mt-10">
+        <a class="button" href="/marketplace">Marketplace</a>
+        <a class="button ml-4" href="/admin">Admin</a>
+      </section>
+    </div>
+
+    <ChatWidget backendUrl={import.meta.env.PUBLIC_BACKEND_URL || 'http://localhost:8080'} />
+  </body>
+</html>
