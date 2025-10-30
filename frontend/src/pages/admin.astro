@@ -5,14 +5,14 @@ const ADMIN_PASSWORD = import.meta.env.PUBLIC_ADMIN_PASSWORD;
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Admin Panel</title>
+  <title>Admin Panel - Space</title>
 </head>
 <body class="bg-black text-sky-200 p-8">
   <h1 class="text-3xl font-bold">Admin Panel</h1>
   <p>Use admin password header or query param to manage bans / plugins.</p>
 
   <section class="mt-6">
-    <h2>Ban / Unban IP</h2>
+    <h2 class="text-xl">Ban / Unban IP</h2>
     <form id="ban-form">
       <input id="ban-ip" placeholder="IP to ban/unban" class="p-2 rounded bg-slate-900 text-sky-100" />
       <button data-action="ban" class="px-3 py-1 bg-red-600 rounded ml-2">Ban</button>
@@ -22,20 +22,20 @@ const ADMIN_PASSWORD = import.meta.env.PUBLIC_ADMIN_PASSWORD;
   </section>
 
   <section class="mt-8">
-    <h2>Plugin Approval Queue</h2>
+    <h2 class="text-xl">Plugin Approval Queue</h2>
     <div id="queue"></div>
   </section>
 
   <script>
     async function fetchQueue() {
-      const resp = await fetch('/admin/plugins/queue', {
+      const resp = await fetch('/api/admin/plugins/queue', {
         headers: { 'x-admin-password': ADMIN_PASSWORD },
       });
       const j = await resp.json();
       return j.queue;
     }
     async function approvePlugin(name) {
-      const resp = await fetch('/admin/plugins/approve', {
+      const resp = await fetch('/api/admin/plugins/approve', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -49,7 +49,7 @@ const ADMIN_PASSWORD = import.meta.env.PUBLIC_ADMIN_PASSWORD;
       e.preventDefault();
       const ip = document.getElementById('ban-ip').value;
       const action = e.submitter.getAttribute('data-action');
-      const endpoint = action === 'ban' ? '/admin/ban' : '/admin/unban';
+      const endpoint = action === 'ban' ? '/api/admin/ban' : '/api/admin/unban';
       const resp = await fetch(endpoint, {
         method: 'POST',
         headers: {
