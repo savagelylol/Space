@@ -4,38 +4,72 @@ import { defineConfig } from "astro/config";
 import tailwind from "@astrojs/tailwind";
 import vercel from "@astrojs/vercel";
 
+// If you have environment variables / aliasing, you can import 'path' etc.
+import path from "path";
+
 export default defineConfig({
-  // Use Tailwind CSS integration
+  // Site URL (used for sitemaps, RSS, canonical URLs)
+  site: "https://your-domain.vercel.app",
+
+  // Set base path if your site is deployed under a path prefix (optional)
+  // Example: if deployed at https://domain.com/space/, set base: "/space/"
+  base: "/",
+
+  // Integrations for CSS / UI
   integrations: [
-    tailwind()
+    tailwind({
+      // Optional Tailwind config overrides
+      config: {
+        // You can extend theme etc here
+      }
+    })
   ],
 
-  // Set the site URL (for canonical, sitemap, etc) — change to your production URL
-  site: "https://space-proxy-tau.vercel.app",
-
-  // Output mode: if you have dynamic API or server-side rendering, use 'server'; 
-  // if purely static frontend, you may use 'static'
+  // Specify output mode:
+  // 'static' means purely static build; 'server' means SSR output; can choose based on features you need.
   output: "server",
 
+  // Adapter for Vercel deployment
   adapter: vercel({
-    // Here you can pass adapter config (optional)
-    // e.g., enable Vercel Web Analytics:
+    // Optional configuration for the adapter
+    // For example:
     // webAnalytics: { enabled: true },
-    // If you need ISR (Incremental Static Regeneration): isr: true
+    // imagesConfig: { sizes: [320, 640, 1280], domains: ['your-domain.vercel.app'] },
+    // isr: { expiration: 60, bypassToken: process.env.BYPASS_TOKEN },
+    // edgeMiddleware: true
   }),
 
-  // Your other config options (e.g., dev server, build options, etc)
-  // For example, you can define alias or Vite settings:
+  // Vite configuration (for custom aliasing, environment variables, etc)
   vite: {
-    // Example: resolve aliases
     resolve: {
       alias: {
-        "@components": "./src/components",
-        "@pages": "./src/pages"
+        // Example aliases
+        "@components": path.resolve("./src/components"),
+        "@pages":      path.resolve("./src/pages"),
+        "@styles":     path.resolve("./src/styles"),
       }
+    },
+    // Other Vite options e.g., define, optimizeDeps, server proxy etc.
+    define: {
+      "process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV),
     }
   },
 
-  // If you have client-side only code or islands you can configure those too
-  // Other options like publicDir, srcDir etc default are okay unless you changed them
+  // Markdown / MDSveX / other site-wide config could go here:
+  markdown: {
+    // Example: enable footnotes, GitHub-style headings etc
+  },
+
+  // Optional: preview / dev server configuration
+  devOptions: {
+    // port: 3000,
+    // tailwind.configPath: "./tailwind.config.cjs"
+  },
+
+  // Optional: build options
+  build: {
+    // Example: specify cleanDist, sitemap, etc
+    // siteDir: "dist",  // default is fine
+    // pageUrlFormat: "directory", // how pages urls are formatted
+  }
 });
