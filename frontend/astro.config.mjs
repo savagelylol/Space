@@ -9,7 +9,7 @@ import path from "path";
 
 export default defineConfig({
   // Site URL (used for sitemaps, RSS, canonical URLs)
-  site: "https://your-domain.vercel.app",
+  site: "https://space-proxy-tau.vercel.app",
 
   // Set base path if your site is deployed under a path prefix (optional)
   // Example: if deployed at https://domain.com/space/, set base: "/space/"
