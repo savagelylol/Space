@@ -1,23 +1,20 @@
 // frontend/astro.config.mjs
 
 import { defineConfig } from "astro/config";
-import tailwind from "@astrojs/tailwind";
 import vercel from "@astrojs/vercel";
+import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
   site: "https://space-proxy-tau.vercel.app",
   base: "/",
-  integrations: [
-    tailwind()
-  ],
   output: "server",
   adapter: vercel({
     // optional adapter settings
-    // webAnalytics: { enabled: true },
-    // imageService: true,
-    // isr: { expiration: 60 }
   }),
   vite: {
+    plugins: [
+      tailwindcss()
+    ],
     resolve: {
       alias: {
         "@components": "./src/components",
@@ -30,9 +27,9 @@ export default defineConfig({
     }
   },
   devOptions: {
-    // etc. if needed
+    // optional
   },
   build: {
-    // other build options if you use them
+    // optional
   }
 });
