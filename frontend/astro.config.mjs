@@ -5,7 +5,7 @@ import tailwind from "@astrojs/tailwind";
 import vercel from "@astrojs/vercel";
 
 export default defineConfig({
-  site: "https://your-production-domain.vercel.app",
+  site: "https://space-proxy-tau.vercel.app",
   base: "/",
   integrations: [
     tailwind()
