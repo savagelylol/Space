@@ -11,7 +11,7 @@ export default defineConfig({
   ],
 
   // Set the site URL (for canonical, sitemap, etc) — change to your production URL
-  site: "https://space-proxy-tau.vercel.app/",
+  site: "https://space-proxy-tau.vercel.app",
 
   // Output mode: if you have dynamic API or server-side rendering, use 'server'; 
   // if purely static frontend, you may use 'static'
