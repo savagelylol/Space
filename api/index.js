@@ -1,3 +1,4 @@
+// api/index.js
 const express = require("express");
 const fetch = require("node-fetch");
 const rateLimit = require("express-rate-limit");
@@ -9,19 +10,26 @@ const app = express();
 app.use(helmet());
 app.use(bodyParser.json({ limit: "1mb" }));
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "please-change-me";
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY || null;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || "*";
 
+if (!OPENROUTER_API_KEY) {
+  console.warn("⚠️  No OPENROUTER_API_KEY environment variable set. AI / chat functionality will fail.");
+}
+
+// In-memory ban list & plugin approval queue
 const bannedIPs = new Set();
 const pluginApprovalQueue = [];
 
+// Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 1000,
-  max: 20
+  windowMs: 15 * 1000, // 15 seconds
+  max: 20,             // max 20 requests per window per IP
 });
 app.use(limiter);
 
+// CORS / origin check (simple)
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", FRONTEND_ORIGIN);
   res.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
@@ -33,6 +41,7 @@ function isHtml(headers) {
   return ct.includes("text/html");
 }
 
+// Proxy logic (unchanged content + rewrite + disguise)
 function proxifyAbsoluteLinks(html, origin) {
   const replacer = (match, p1) => {
     try {
@@ -58,7 +67,6 @@ function proxifyAbsoluteLinks(html, origin) {
     const baseTag = `<base href="${origin}">`;
     html = html.replace(/<head([^>]*)>/i, `<head$1>\n    ${baseTag}`);
   }
-
   return html;
 }
 
@@ -70,14 +78,13 @@ function injectDisguise(html, disguise) {
     ? `
 (function(){
   var link = document.querySelector("link[rel*='icon']") || document.createElement('link');
-  link.type = 'image/x-icon';
-  link.rel = 'shortcut icon';
+  link.type = "image/x-icon";
+  link.rel = "shortcut icon";
   link.href = ${JSON.stringify(disguise.favicon)};
   document.getElementsByTagName('head')[0].appendChild(link);
 })();
 `
     : "";
-
   const injection = `<script>/* injected by Space proxy */\n${titleScript}\n${faviconScript}\n</script>\n`;
   return html.replace(/<\/head>/i, `${injection}</head>`);
 }
@@ -106,25 +113,29 @@ app.get("/proxy", async (req, res) => {
     return res.status(403).send("Forbidden host");
   }
 
-  const fetchResp = await fetch(targetUrl.toString(), {
-    headers: {
-      "user-agent": req.headers["user-agent"] || "Space-Proxy/1.0"
-    },
-    redirect: "follow"
-  });
+  try {
+    const fetchResp = await fetch(targetUrl.toString(), {
+      headers: {
+        "user-agent": req.headers["user-agent"] || "Space-Proxy/1.0",
+        // you may forward cookies if needed
+        // "cookie": req.headers.cookie || ""
+      },
+      redirect: "follow",
+    });
 
-  const contentType = fetchResp.headers.get("content-type") || "";
-  res.status(fetchResp.status);
-  ["content-length", "content-type", "accept-ranges", "last-modified", "etag"].forEach(h => {
-    const v = fetchResp.headers.get(h);
-    if (v) res.setHeader(h, v);
-  });
+    const status = fetchResp.status;
+    const contentType = fetchResp.headers.get("content-type") || "";
+    res.status(status);
+    ["content-length", "content-type", "accept-ranges", "last-modified", "etag"].forEach((h) => {
+      const v = fetchResp.headers.get(h);
+      if (v) res.setHeader(h, v);
+    });
 
-  if (isHtml(fetchResp.headers)) {
-    let body = await fetchResp.text();
-    body = proxifyAbsoluteLinks(body, `${targetUrl.protocol}//${targetUrl.host}`);
-    body = injectDisguise(body, disguise);
-    const navGuard = `<script>
+    if (isHtml(fetchResp.headers)) {
+      let body = await fetchResp.text();
+      body = proxifyAbsoluteLinks(body, `${targetUrl.protocol}//${targetUrl.host}`);
+      body = injectDisguise(body, disguise);
+      const navGuard = `<script>
 (function(){
   document.addEventListener('click', function(e){
     var a = e.target.closest && e.target.closest('a');
@@ -138,82 +149,92 @@ app.get("/proxy", async (req, res) => {
   }, true);
 })();
 </script></body>`;
-    body = body.replace(/<\/body>/i, navGuard);
-    return res.send(body);
-  } else {
-    const buffer = await fetchResp.buffer();
-    res.send(buffer);
+      body = body.replace(/<\/body>/i, navGuard);
+      return res.send(body);
+    } else {
+      const buffer = await fetchResp.buffer();
+      return res.send(buffer);
+    }
+  } catch (err) {
+    console.error("Proxy error:", err);
+    return res.status(500).send("Proxy error");
   }
 });
 
+// --- AI / chat endpoint using OpenRouter ---
 app.post("/ai", async (req, res) => {
-  if (!OPENAI_API_KEY) return res.status(501).send("AI backend not configured.");
+  if (!OPENROUTER_API_KEY) {
+    return res.status(501).json({ error: "AI backend not configured." });
+  }
   const { messages } = req.body;
-  if (!messages) return res.status(400).send("Missing messages");
+  if (!messages || !Array.isArray(messages)) {
+    return res.status(400).json({ error: "Missing or invalid 'messages' array" });
+  }
 
   try {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const apiUrl = "https://openrouter.ai/api/v1/chat/completions";            // root endpoint for OpenRouter chat
+    const bodyPayload = {
+      model: "openai/gpt-oss-20b:free",     // specify the model you want to use
+      messages,
+      max_tokens: 800,
+      temperature: 0.7
+    };
+
+    const response = await fetch(apiUrl, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages,
-        max_tokens: 800,
-        temperature: 0.7
-      })
+      body: JSON.stringify(bodyPayload)
     });
+
     const data = await response.json();
-    res.json(data);
-  } catch (e) {
-    console.error("AI proxy error", e);
-    res.status(500).send("AI error");
+    if (!response.ok) {
+      console.error("OpenRouter API returned error:", data);
+      return res.status(response.status).json({ error: "OpenRouter API error", details: data });
+    }
+
+    return res.json(data);
+  } catch (err) {
+    console.error("OpenRouter request failed:", err);
+    return res.status(500).json({ error: "AI request failed", details: err.message });
   }
 });
 
+// --- Admin endpoints ---
 function requireAdmin(req, res, next) {
   const pw = req.headers["x-admin-password"] || req.query.admin_password;
-  if (!pw || pw !== ADMIN_PASSWORD) return res.status(401).send("Unauthorized");
+  if (!pw || pw !== ADMIN_PASSWORD) return res.status(401).json({ error: "Unauthorized" });
   next();
 }
 
 app.post("/admin/ban", requireAdmin, (req, res) => {
   const ip = req.body.ip;
-  if (!ip) return res.status(400).send("Missing ip");
+  if (!ip) return res.status(400).json({ error: "Missing ip" });
   bannedIPs.add(ip);
-  res.json({ ok: true, banned: ip });
+  return res.json({ ok: true, banned: ip });
 });
 
 app.post("/admin/unban", requireAdmin, (req, res) => {
   const ip = req.body.ip;
-  if (!ip) return res.status(400).send("Missing ip");
+  if (!ip) return res.status(400).json({ error: "Missing ip" });
   bannedIPs.delete(ip);
-  res.json({ ok: true, unbanned: ip });
-});
-
-app.post("/plugins/submit", (req, res) => {
-  const manifest = req.body.manifest;
-  if (!manifest || !manifest.name || !manifest.entry) return res.status(400).send("Bad manifest");
-  manifest.submittedAt = new Date().toISOString();
-  manifest.approved = false;
-  pluginApprovalQueue.push(manifest);
-  res.json({ ok: true, queued: manifest.name });
+  return res.json({ ok: true, unbanned: ip });
 });
 
 app.get("/admin/plugins/queue", requireAdmin, (req, res) => {
-  res.json({ queue: pluginApprovalQueue });
+  return res.json({ queue: pluginApprovalQueue });
 });
 
 app.post("/admin/plugins/approve", requireAdmin, (req, res) => {
   const name = req.body.name;
-  const idx = pluginApprovalQueue.findIndex(m => m.name === name);
-  if (idx === -1) return res.status(404).send("Not found");
+  const idx = pluginApprovalQueue.findIndex((m) => m.name === name);
+  if (idx === -1) return res.status(404).json({ error: "Plugin not found" });
   const manifest = pluginApprovalQueue.splice(idx, 1)[0];
   manifest.approved = true;
-  res.json({ ok: true, approved: manifest });
+  return res.json({ ok: true, approved: manifest });
 });
 
-// Export app for serverless
+// Export as serverless function
 module.exports = app;
