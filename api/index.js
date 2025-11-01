@@ -1,41 +1,38 @@
 // api/index.js
 
 const express = require("express");
-const fetch = require("node-fetch");
+const fetch   = require("node-fetch");
 const rateLimit = require("express-rate-limit");
-const helmet = require("helmet");
+const helmet     = require("helmet");
 const bodyParser = require("body-parser");
-const { URL } = require("url");
+const { URL }   = require("url");
 
 const app = express();
 app.use(helmet());
 app.use(bodyParser.json({ limit: "1mb" }));
 
-const ADMIN_PASSWORD      = process.env.ADMIN_PASSWORD      || "";
-const OPENROUTER_API_KEY  = process.env.OPENROUTER_API_KEY  || "";
-const FRONTEND_ORIGIN     = process.env.FRONTEND_ORIGIN     || "*";
+const ADMIN_PASSWORD     = process.env.ADMIN_PASSWORD     || "";
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
+const FRONTEND_ORIGIN    = process.env.FRONTEND_ORIGIN    || "*";
 
-console.log("⚙️ API starting with config:", {
-  ADMIN_PASSWORD_set: !!ADMIN_PASSWORD,
+console.log("⚙️ API starting", {
+  ADMIN_PASSWORD_set:     !!ADMIN_PASSWORD,
   OPENROUTER_API_KEY_set: !!OPENROUTER_API_KEY,
   FRONTEND_ORIGIN
 });
 
-// In-memory state
-const bannedIPs           = new Set();
+const bannedIPs = new Set();
 const pluginApprovalQueue = [];
 
-// Rate limiting
 app.use(rateLimit({
-  windowMs: 15 * 1000,  // 15 seconds
-  max:     20           // 20 requests per window per IP
+  windowMs: 15 * 1000,
+  max:     20
 }));
 
-// CORS / pre-flight support
 app.use((req, res, next) => {
-  res.setHeader("Access-Control-Allow-Origin", FRONTEND_ORIGIN);
-  res.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Origin",      FRONTEND_ORIGIN);
+  res.setHeader("Access-Control-Allow-Headers",     "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+  res.setHeader("Access-Control-Allow-Methods",     "GET, POST, OPTIONS");
   if (req.method === "OPTIONS") {
     return res.sendStatus(200);
   }
@@ -53,7 +50,7 @@ function proxifyAbsoluteLinks(html, origin) {
       const target = new URL(p1);
       const prox   = `/proxy?url=${encodeURIComponent(target.toString())}`;
       return match.replace(p1, prox);
-    } catch (_e) {
+    } catch (e) {
       return match;
     }
   };
@@ -63,11 +60,10 @@ function proxifyAbsoluteLinks(html, origin) {
     try {
       const prox = `/proxy?url=${encodeURIComponent(new URL(u).toString())}`;
       return `url("${prox}")`;
-    } catch (_e) {
+    } catch (e) {
       return m;
     }
   });
-
   if (!html.includes("<base")) {
     const baseTag = `<base href="${origin}">`;
     html = html.replace(/<head([^>]*)>/i, `<head$1>\n    ${baseTag}`);
@@ -76,29 +72,30 @@ function proxifyAbsoluteLinks(html, origin) {
 }
 
 function injectDisguise(html, disguise) {
-  const titleScript   = disguise?.title   ? `document.title = ${JSON.stringify(disguise.title)};` : "";
-  const faviconScript = disguise?.favicon ? `
+  const titleScript = disguise?.title
+    ? `document.title = ${JSON.stringify(disguise.title)};`
+    : "";
+  const faviconScript = disguise?.favicon
+    ? `
 (function(){
-  var link = document.querySelector("link[rel*='icon']") || document.createElement('link');
+  var link = document.querySelector("link[rel*='icon']") || document.createElement("link");
   link.type = "image/x-icon";
   link.rel  = "shortcut icon";
   link.href = ${JSON.stringify(disguise.favicon)};
-  document.getElementsByTagName('head')[0].appendChild(link);
+  document.getElementsByTagName("head")[0].appendChild(link);
 })();
 ` : "";
   const injection = `<script>/* injected by space proxy */\n${titleScript}\n${faviconScript}\n</script>\n`;
   return html.replace(/<\/head>/i, `${injection}</head>`);
 }
 
-// Health check endpoint
 app.get("/health", (req, res) => {
-  console.log("✅ /health called");
+  console.log("✅ /health ping");
   res.json({ ok: true });
 });
 
-// Proxy endpoint
 app.get("/proxy", async (req, res) => {
-  console.log("🔍 /proxy called with query:", req.query);
+  console.log("🔍 /proxy called", req.query);
   const requesterIP = req.ip;
   if (bannedIPs.has(requesterIP)) {
     return res.status(403).send("Forbidden: banned IP");
@@ -108,7 +105,6 @@ app.get("/proxy", async (req, res) => {
   if (!target) {
     return res.status(400).send("Missing url param");
   }
-
   let targetUrl;
   try {
     targetUrl = new URL(target);
@@ -144,14 +140,14 @@ app.get("/proxy", async (req, res) => {
       body = injectDisguise(body, disguise);
       const navGuard = `<script>
 (function(){
-  document.addEventListener('click', function(e){
-    var a = e.target.closest && e.target.closest('a');
+  document.addEventListener("click", function(e){
+    var a = e.target.closest && e.target.closest("a");
     if (!a) return;
-    var href = a.getAttribute('href');
+    var href = a.getAttribute("href");
     if (!href) return;
     if (/^https?:\\/\\//i.test(href)){
       e.preventDefault();
-      location.href = '/proxy?url=' + encodeURIComponent(href) + '&title=' + encodeURIComponent(document.title);
+      location.href = "/proxy?url=" + encodeURIComponent(href) + "&title=" + encodeURIComponent(document.title);
     }
   }, true);
 })();
@@ -159,8 +155,8 @@ app.get("/proxy", async (req, res) => {
       body = body.replace(/<\/body>/i, navGuard);
       return res.send(body);
     } else {
-      const arrayBuf = await fetchResp.arrayBuffer();
-      return res.send(Buffer.from(arrayBuf));
+      const buf = await fetchResp.arrayBuffer();
+      return res.send(Buffer.from(buf));
     }
   } catch (err) {
     console.error("❌ Proxy error:", err);
@@ -168,9 +164,8 @@ app.get("/proxy", async (req, res) => {
   }
 });
 
-// AI / Chat endpoint with OpenRouter
 app.post("/ai", async (req, res) => {
-  console.log("🤖 /ai called with messages length:", req.body.messages?.length);
+  console.log("🤖 /ai called", { messagesLength: req.body.messages?.length });
   if (!OPENROUTER_API_KEY) {
     return res.status(501).json({ error: "AI backend not configured" });
   }
@@ -180,16 +175,16 @@ app.post("/ai", async (req, res) => {
   }
 
   try {
-    const apiUrl      = "https://openrouter.ai/api/v1/chat/completions";
+    const apiUrl = "https://openrouter.ai/api/v1/chat/completions";
     const bodyPayload = {
-      model:        "openai/gpt-oss-20b:free",
+      model:       "openai/gpt-oss-20b:free",
       messages,
-      max_tokens:   800,
-      temperature:   0.7
+      max_tokens:  800,
+      temperature: 0.7
     };
 
     const response = await fetch(apiUrl, {
-      method:  "POST",
+      method: "POST",
       headers: {
         "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
         "Content-Type":  "application/json"
@@ -199,7 +194,7 @@ app.post("/ai", async (req, res) => {
 
     const data = await response.json();
     if (!response.ok) {
-      console.error("❗ OpenRouter API returned error:", { status: response.status, data });
+      console.error("❗ OpenRouter API error:", { status: response.status, data });
       return res.status(response.status).json({ error: "OpenRouter API error", details: data });
     }
 
@@ -210,18 +205,17 @@ app.post("/ai", async (req, res) => {
   }
 });
 
-// Admin endpoints
 function requireAdmin(req, res, next) {
   const pw = req.headers["x-admin-password"] || req.query.admin_password;
   if (!pw || pw !== ADMIN_PASSWORD) {
-    console.warn("⚠️ Unauthorized admin attempt from IP:", req.ip);
+    console.warn("⚠️ Unauthorized admin attempt", { ip: req.ip });
     return res.status(401).json({ error: "Unauthorized" });
   }
   next();
 }
 
 app.post("/admin/ban", requireAdmin, (req, res) => {
-  console.log("🚫 /admin/ban called", req.body);
+  console.log("🚫 /admin/ban", req.body);
   const ip = req.body.ip;
   if (!ip) return res.status(400).json({ error: "Missing ip" });
   bannedIPs.add(ip);
@@ -229,7 +223,7 @@ app.post("/admin/ban", requireAdmin, (req, res) => {
 });
 
 app.post("/admin/unban", requireAdmin, (req, res) => {
-  console.log("✅ /admin/unban called", req.body);
+  console.log("✅ /admin/unban", req.body);
   const ip = req.body.ip;
   if (!ip) return res.status(400).json({ error: "Missing ip" });
   bannedIPs.delete(ip);
@@ -237,12 +231,12 @@ app.post("/admin/unban", requireAdmin, (req, res) => {
 });
 
 app.get("/admin/plugins/queue", requireAdmin, (req, res) => {
-  console.log("📋 /admin/plugins/queue called");
+  console.log("📋 /admin/plugins/queue");
   return res.json({ queue: pluginApprovalQueue });
 });
 
 app.post("/admin/plugins/approve", requireAdmin, (req, res) => {
-  console.log("✅ /admin/plugins/approve called", req.body);
+  console.log("✅ /admin/plugins/approve", req.body);
   const name = req.body.name;
   const idx  = pluginApprovalQueue.findIndex(m => m.name === name);
   if (idx === -1) {
@@ -253,5 +247,4 @@ app.post("/admin/plugins/approve", requireAdmin, (req, res) => {
   return res.json({ ok: true, approved: manifest });
 });
 
-// Export for Vercel serverless
 module.exports = app;
