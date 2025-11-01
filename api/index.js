@@ -14,9 +14,11 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || "*";
 
-if (!OPENROUTER_API_KEY) {
-  console.warn("⚠️  No OPENROUTER_API_KEY environment variable set. AI / chat functionality will fail.");
-}
+console.log("🔧 Starting API server", {
+  ADMIN_PASSWORD_set: !!ADMIN_PASSWORD,
+  OPENROUTER_API_KEY_set: !!OPENROUTER_API_KEY,
+  FRONTEND_ORIGIN
+});
 
 // In-memory ban list & plugin approval queue
 const bannedIPs = new Set();
@@ -24,15 +26,19 @@ const pluginApprovalQueue = [];
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 1000, // 15 seconds
-  max: 20,             // max 20 requests per window per IP
+  windowMs: 15 * 1000,
+  max: 20,
 });
 app.use(limiter);
 
-// CORS / origin check (simple)
+// CORS / origin check
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", FRONTEND_ORIGIN);
   res.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
   next();
 });
 
@@ -41,7 +47,6 @@ function isHtml(headers) {
   return ct.includes("text/html");
 }
 
-// Proxy logic (unchanged content + rewrite + disguise)
 function proxifyAbsoluteLinks(html, origin) {
   const replacer = (match, p1) => {
     try {
@@ -71,25 +76,22 @@ function proxifyAbsoluteLinks(html, origin) {
 }
 
 function injectDisguise(html, disguise) {
-  const titleScript = disguise?.title
-    ? `document.title = ${JSON.stringify(disguise.title)};`
-    : "";
-  const faviconScript = disguise?.favicon
-    ? `
+  const titleScript = disguise?.title ? `document.title = ${JSON.stringify(disguise.title)};` : "";
+  const faviconScript = disguise?.favicon ? `
 (function(){
   var link = document.querySelector("link[rel*='icon']") || document.createElement('link');
-  link.type = "image/x-icon";
-  link.rel = "shortcut icon";
+  link.type = 'image/x-icon';
+  link.rel = 'shortcut icon';
   link.href = ${JSON.stringify(disguise.favicon)};
   document.getElementsByTagName('head')[0].appendChild(link);
 })();
-`
-    : "";
+` : "";
   const injection = `<script>/* injected by Space proxy */\n${titleScript}\n${faviconScript}\n</script>\n`;
   return html.replace(/<\/head>/i, `${injection}</head>`);
 }
 
 app.get("/proxy", async (req, res) => {
+  console.log("🌐 Proxy request", req.query);
   const requesterIP = req.ip;
   if (bannedIPs.has(requesterIP)) {
     return res.status(403).send("Forbidden");
@@ -116,15 +118,12 @@ app.get("/proxy", async (req, res) => {
   try {
     const fetchResp = await fetch(targetUrl.toString(), {
       headers: {
-        "user-agent": req.headers["user-agent"] || "Space-Proxy/1.0",
-        // you may forward cookies if needed
-        // "cookie": req.headers.cookie || ""
+        "user-agent": req.headers["user-agent"] || "Space-Proxy/1.0"
       },
       redirect: "follow",
     });
 
     const status = fetchResp.status;
-    const contentType = fetchResp.headers.get("content-type") || "";
     res.status(status);
     ["content-length", "content-type", "accept-ranges", "last-modified", "etag"].forEach((h) => {
       const v = fetchResp.headers.get(h);
@@ -152,8 +151,8 @@ app.get("/proxy", async (req, res) => {
       body = body.replace(/<\/body>/i, navGuard);
       return res.send(body);
     } else {
-      const buffer = await fetchResp.buffer();
-      return res.send(buffer);
+      const buffer = await fetchResp.arrayBuffer();
+      return res.send(Buffer.from(buffer));
     }
   } catch (err) {
     console.error("Proxy error:", err);
@@ -161,8 +160,8 @@ app.get("/proxy", async (req, res) => {
   }
 });
 
-// --- AI / chat endpoint using OpenRouter ---
 app.post("/ai", async (req, res) => {
+  console.log("🤖 AI endpoint called", { messages: req.body.messages?.length });
   if (!OPENROUTER_API_KEY) {
     return res.status(501).json({ error: "AI backend not configured." });
   }
@@ -172,9 +171,9 @@ app.post("/ai", async (req, res) => {
   }
 
   try {
-    const apiUrl = "https://openrouter.ai/api/v1/chat/completions";            // root endpoint for OpenRouter chat
+    const apiUrl = "https://openrouter.ai/api/v1/chat/completions";
     const bodyPayload = {
-      model: "openai/gpt-oss-20b:free",     // specify the model you want to use
+      model: "openai/gpt-oss-20b:free",
       messages,
       max_tokens: 800,
       temperature: 0.7
@@ -202,10 +201,12 @@ app.post("/ai", async (req, res) => {
   }
 });
 
-// --- Admin endpoints ---
 function requireAdmin(req, res, next) {
   const pw = req.headers["x-admin-password"] || req.query.admin_password;
-  if (!pw || pw !== ADMIN_PASSWORD) return res.status(401).json({ error: "Unauthorized" });
+  if (!pw || pw !== ADMIN_PASSWORD) {
+    console.warn("Unauthorized admin attempt", { ip: req.ip });
+    return res.status(401).json({ error: "Unauthorized" });
+  }
   next();
 }
 
@@ -230,11 +231,17 @@ app.get("/admin/plugins/queue", requireAdmin, (req, res) => {
 app.post("/admin/plugins/approve", requireAdmin, (req, res) => {
   const name = req.body.name;
   const idx = pluginApprovalQueue.findIndex((m) => m.name === name);
-  if (idx === -1) return res.status(404).json({ error: "Plugin not found" });
+  if (idx === -1) {
+    return res.status(404).json({ error: "Plugin not found" });
+  }
   const manifest = pluginApprovalQueue.splice(idx, 1)[0];
   manifest.approved = true;
   return res.json({ ok: true, approved: manifest });
 });
 
-// Export as serverless function
+// Health check endpoint
+app.get("/health", (req, res) => {
+  res.json({ ok: true });
+});
+
 module.exports = app;
